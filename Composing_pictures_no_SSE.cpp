@@ -61,7 +61,7 @@ void RenewFPS(FPS *fps_struct)
     fps_struct->prev_time = fps_struct->cur_time;
 }
 
-void DoComposedPicture(unsigned char *background_pixels, unsigned char *kitty_uwu_pixels, unsigned char *result_picture_pixels)
+void DoComposedPicture(const unsigned char *background_pixels, const unsigned char *kitty_uwu_pixels, unsigned char *result_picture_pixels)
 {
     assert(background_pixels     != nullptr);
     assert(kitty_uwu_pixels      != nullptr);
@@ -121,9 +121,7 @@ int main()
         
         return 1;
     }   
-
-    unsigned *background_pixels     = (unsigned *) calloc(BACKGROUND_WIDTH * BACKGROUND_HEIGHT,  sizeof(unsigned));
-    FillPixelsArray(&background, background_pixels, BACKGROUND_WIDTH, BACKGROUND_HEIGHT);
+    const uint8_t *background_pixels = background.getPixelsPtr();
 
     sf::Image kitty_uwu;
     if (!kitty_uwu.loadFromFile("AskhatCat.bmp"))
@@ -132,9 +130,8 @@ int main()
 
         return 1;
     }
-    unsigned *kitty_uwu_pixels      = (unsigned *) calloc(KITTY_UWU_WIDTH  * KITTY_UWU_HEIGHT,   sizeof(unsigned));
-    FillPixelsArray(&kitty_uwu, kitty_uwu_pixels, KITTY_UWU_WIDTH, KITTY_UWU_HEIGHT);
-    
+    const uint8_t *kitty_uwu_pixels = kitty_uwu.getPixelsPtr();
+
     picture result_picture;
     result_picture.texture.create(BACKGROUND_WIDTH, BACKGROUND_HEIGHT);
     result_picture.sprite.setTexture(result_picture.texture);
@@ -152,7 +149,7 @@ int main()
                 window.close();
         }
 
-        DoComposedPicture((unsigned char *) background_pixels, (unsigned char *) kitty_uwu_pixels, (unsigned char *) result_picture_pixels);
+        DoComposedPicture(background_pixels, kitty_uwu_pixels, (unsigned char *) result_picture_pixels);
         result_picture.texture.update((const uint8_t *) result_picture_pixels);
         
         RenewFPS(&fps);
@@ -165,8 +162,6 @@ int main()
         window.display();
     }
 
-    free(background_pixels);
-    free(kitty_uwu_pixels);
     free(result_picture_pixels);
 
     return 0;
