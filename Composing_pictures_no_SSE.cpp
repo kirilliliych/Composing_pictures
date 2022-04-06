@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
-#include <time.h>
+#include <string.h>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 
@@ -21,82 +21,71 @@ struct FPS
     sf::Font font;
     sf::Text text;
 
-    clock_t cur_time  = clock();
-    clock_t prev_time = 0;
+    sf::Clock clock;
+    sf::Time  cur_time   = clock.getElapsedTime();
 
-    clock_t FPS_delay = CLOCKS_PER_SEC / 100;
+    sf::Clock delay_clock;
+    sf::Time  delay_time = delay_clock.getElapsedTime();
 
-    char fps_str[FPS_STR_MAX_SIZE] = "FPS: 000.0";
+    float FPS_delay = 0.2f;
+
+    char fps_str[FPS_STR_MAX_SIZE] = "FPS: 0000.00\n";
 };
 
-const unsigned BACKGROUND_WIDTH           = 800;
-const unsigned BACKGROUND_HEIGHT          = 600;
-const unsigned KITTY_UWU_WIDTH            = 235;
-const unsigned KITTY_UWU_HEIGHT           = 126;
+const unsigned BACKGROUND_WIDTH           = 604;
+const unsigned BACKGROUND_HEIGHT          = 453;
+const unsigned DUDE_WIDTH                 = 124;
+const unsigned DUDE_HEIGHT                = 360;
 
-const unsigned KITTY_UWU_X_POSITION       = 300;
-const unsigned KITTY_UWU_Y_POSITION       = 220;
+const unsigned DUDE_X_POSITION            = 350;
+const unsigned DUDE_Y_POSITION            = 80;
 
-
-unsigned Reverse(unsigned x)
-{
-    x = (x & 0x00FF00FF) <<  8 | (x & 0xFF00FF00) >>  8;
-    x = (x & 0x0000FFFF) << 16 | (x & 0xFFFF0000) >> 16;
-
-    return x;
-}
 
 void RenewFPS(FPS *fps_struct)
 {
     assert(fps_struct != nullptr);
+    
+    fps_struct->delay_time = fps_struct->delay_clock.getElapsedTime();
 
-    fps_struct->cur_time = clock();
-    if (fps_struct->cur_time - fps_struct->prev_time > fps_struct->FPS_delay)
+    if (fps_struct->delay_time.asSeconds() > fps_struct->FPS_delay)
     {
-        sprintf(fps_struct->fps_str + FPS_STR_FPS_VALUE_POS, "%.1lf\n", 
-                ((float) CLOCKS_PER_SEC / (fps_struct->cur_time - fps_struct->prev_time)));
+        fps_struct->cur_time = fps_struct->clock.getElapsedTime();
+
+        sprintf(fps_struct->fps_str + FPS_STR_FPS_VALUE_POS, "%.2lf\n", 
+                (1 / fps_struct->cur_time.asSeconds()));
         
         fps_struct->text.setString(fps_struct->fps_str);
+        
+        fps_struct->delay_clock.restart();
+
+        fprintf(stderr, fps_struct->fps_str); 
     }
-    fps_struct->prev_time = fps_struct->cur_time;
+
+    fps_struct->clock.restart();
 }
 
-void DoComposedPicture(const unsigned char *background_pixels, const unsigned char *kitty_uwu_pixels, unsigned char *result_picture_pixels)
+void DoComposedPicture(const unsigned char *background_pixels, const unsigned char *dude_pixels, unsigned char *result_picture_pixels)
 {
     assert(background_pixels     != nullptr);
-    assert(kitty_uwu_pixels      != nullptr);
+    assert(dude_pixels           != nullptr);
     assert(result_picture_pixels != nullptr);
 
-    for (int y_pos = 0; y_pos < KITTY_UWU_HEIGHT; ++y_pos)
+    for (int y_pos = 0; y_pos < DUDE_HEIGHT; ++y_pos)
     {
-        for (int x_pos = 0; x_pos < KITTY_UWU_WIDTH; ++x_pos)
+        for (int x_pos = 0; x_pos < DUDE_WIDTH; ++x_pos)
         {
-            unsigned char alpha = kitty_uwu_pixels[(y_pos * KITTY_UWU_WIDTH + x_pos) * sizeof(unsigned) + COLOR_PIXELS];
+            unsigned char alpha = dude_pixels[(y_pos * DUDE_WIDTH + x_pos) * sizeof(unsigned) + COLOR_PIXELS];
             
             for (int color_index = 0; color_index < COLOR_PIXELS; ++color_index)
             {
-                result_picture_pixels[((y_pos + KITTY_UWU_Y_POSITION)    * BACKGROUND_WIDTH + 
-                                        x_pos + KITTY_UWU_X_POSITION)    * sizeof(unsigned) + color_index] = 
-                   (background_pixels[((y_pos + KITTY_UWU_Y_POSITION)    * BACKGROUND_WIDTH + 
-                                        x_pos + KITTY_UWU_X_POSITION)    * sizeof(unsigned) + color_index] * (255 - alpha) + 
-                     kitty_uwu_pixels[ (y_pos * KITTY_UWU_WIDTH + x_pos) * sizeof(unsigned) + color_index] * alpha) / 255;
+                result_picture_pixels[((y_pos + DUDE_Y_POSITION)    * BACKGROUND_WIDTH + 
+                                        x_pos + DUDE_X_POSITION)    * sizeof(unsigned) + color_index] = 
+                   (background_pixels[((y_pos + DUDE_Y_POSITION)    * BACKGROUND_WIDTH + 
+                                        x_pos + DUDE_X_POSITION)    * sizeof(unsigned) + color_index] * (255 - alpha) + 
+                     dude_pixels[      (y_pos * DUDE_WIDTH + x_pos) * sizeof(unsigned) + color_index] * alpha) / 255;
             }
         }
     }    
-}
-
-void FillPixelsArray(sf::Image *image, unsigned *pixels, const unsigned width, const unsigned height)
-{
-    assert(image  != nullptr);
-    assert(pixels != nullptr);
-
-    for (unsigned y_pos = 0; y_pos < height; ++y_pos)
-    {
-        for (unsigned x_pos = 0; x_pos < width; ++x_pos)
-        {
-            pixels[y_pos * width + x_pos] = Reverse(image->getPixel(x_pos, y_pos).toInteger());
-        }
-    }
 }
 
 int main()
@@ -115,29 +104,35 @@ int main()
     fps.text.setFillColor(sf::Color::Green);
 
     sf::Image background;
-    if (!background.loadFromFile("Table.bmp"))
+    if (!background.loadFromFile("background.jpg"))
     {
         printf("Error, can't load Table.bmp\n");
         
         return 1;
     }   
-    const uint8_t *background_pixels = background.getPixelsPtr();
+    const unsigned char *background_pixels = background.getPixelsPtr();
 
-    sf::Image kitty_uwu;
-    if (!kitty_uwu.loadFromFile("AskhatCat.bmp"))
+    sf::Image dude;
+    if (!dude.loadFromFile("dude.png"))
     {
-        printf("Error, can't load AskhatCat.bmp\n");
+        printf("Error, can't load dude.png\n");
 
         return 1;
     }
-    const uint8_t *kitty_uwu_pixels = kitty_uwu.getPixelsPtr();
+    const unsigned char *dude_pixels = dude.getPixelsPtr();
 
     picture result_picture;
     result_picture.texture.create(BACKGROUND_WIDTH, BACKGROUND_HEIGHT);
     result_picture.sprite.setTexture(result_picture.texture);
 
-    unsigned *result_picture_pixels = (unsigned *) calloc(BACKGROUND_WIDTH  * BACKGROUND_HEIGHT, sizeof(unsigned));
-    FillPixelsArray(&background, result_picture_pixels, BACKGROUND_WIDTH, BACKGROUND_HEIGHT);
+    unsigned *result_picture_pixels = (unsigned *) calloc(BACKGROUND_WIDTH * BACKGROUND_HEIGHT,  sizeof(unsigned));
+    memcpy(result_picture_pixels, background_pixels,      BACKGROUND_WIDTH * BACKGROUND_HEIGHT * sizeof(unsigned));
+
+    /*for (int i = 0; i < 100000; ++i)
+    {
+        DoComposedPicture(background_pixels, dude_pixels, (unsigned char *) result_picture_pixels);
+        RenewFPS(&fps);
+    }*/
 
     while (window.isOpen())
     {
@@ -149,7 +144,7 @@ int main()
                 window.close();
         }
 
-        DoComposedPicture(background_pixels, kitty_uwu_pixels, (unsigned char *) result_picture_pixels);
+        DoComposedPicture(background_pixels, dude_pixels, (unsigned char *) result_picture_pixels);
         result_picture.texture.update((const uint8_t *) result_picture_pixels);
         
         RenewFPS(&fps);
