@@ -36,9 +36,13 @@ const unsigned BACKGROUND_WIDTH           = 604;
 const unsigned BACKGROUND_HEIGHT          = 453;
 const unsigned DUDE_WIDTH                 = 124;
 const unsigned DUDE_HEIGHT                = 360;
+const unsigned PATTINSON_WIDTH            = 104;
+const unsigned PATTINSON_HEIGHT           = 298;
 
-const unsigned DUDE_X_POSITION            = 350;
-const unsigned DUDE_Y_POSITION            = 80;
+const unsigned DUDE_X_POSITION            = 0;
+const unsigned DUDE_Y_POSITION            = 0;
+const unsigned PATTINSON_X_POSITION       = 350;
+const unsigned PATTINSON_Y_POSITION       = 100;
 
 
 void RenewFPS(FPS *fps_struct)
@@ -64,34 +68,46 @@ void RenewFPS(FPS *fps_struct)
     fps_struct->clock.restart();
 }
 
-void DoComposedPicture(const unsigned char *background_pixels, const unsigned char *dude_pixels, unsigned char *result_picture_pixels)
+void DoComposedPicture(const unsigned char *add_pixels, unsigned char *result_picture_pixels, 
+                       const unsigned width, const unsigned height, const unsigned x_position, 
+                       const unsigned y_position)
 {
-    assert(background_pixels     != nullptr);
-    assert(dude_pixels           != nullptr);
+    assert(add_pixels            != nullptr);
     assert(result_picture_pixels != nullptr);
 
-    for (int y_pos = 0; y_pos < DUDE_HEIGHT; ++y_pos)
+    for (int y_pos = 0; y_pos < height; ++y_pos)
     {
-        for (int x_pos = 0; x_pos < DUDE_WIDTH; ++x_pos)
+        for (int x_pos = 0; x_pos < width; ++x_pos)
         {
-            unsigned char alpha = dude_pixels[(y_pos * DUDE_WIDTH + x_pos) * sizeof(unsigned) + COLOR_PIXELS];
+            unsigned char alpha = add_pixels[(y_pos * width + x_pos) * sizeof(unsigned) + COLOR_PIXELS];
             
             for (int color_index = 0; color_index < COLOR_PIXELS; ++color_index)
             {
-                result_picture_pixels[((y_pos + DUDE_Y_POSITION)    * BACKGROUND_WIDTH + 
-                                        x_pos + DUDE_X_POSITION)    * sizeof(unsigned) + color_index] = 
-                   (background_pixels[((y_pos + DUDE_Y_POSITION)    * BACKGROUND_WIDTH + 
-                                        x_pos + DUDE_X_POSITION)    * sizeof(unsigned) + color_index] * (255 - alpha) + 
-                     dude_pixels[      (y_pos * DUDE_WIDTH + x_pos) * sizeof(unsigned) + color_index] * alpha) / 255;
+                result_picture_pixels[((y_pos + y_position)    * BACKGROUND_WIDTH + 
+                                        x_pos + x_position)    * sizeof(unsigned) + color_index] = 
+               (result_picture_pixels[((y_pos + y_position)    * BACKGROUND_WIDTH + 
+                                        x_pos + x_position)    * sizeof(unsigned) + color_index] * (255 - alpha) + 
+                      add_pixels[      (y_pos * width + x_pos) * sizeof(unsigned) + color_index] * alpha) / 255;
             }
         }
     }    
 }
 
-int main()
+const unsigned char *InitImage(sf::Image *image, const char *file_name)
 {
-    sf::RenderWindow window(sf::VideoMode(BACKGROUND_WIDTH, BACKGROUND_HEIGHT), "Composing_pictures", sf::Style::Default);     
+    assert(image     != nullptr);
+    assert(file_name != nullptr);
 
+    if (!image->loadFromFile(file_name))
+    {
+        printf("Error, can't load %s\n", file_name);
+    }
+
+    return image->getPixelsPtr(); 
+}
+
+int main()
+{   
     FPS fps;
     if (!fps.font.loadFromFile("CamingoMono-Regular.ttf"))
     {
@@ -103,23 +119,15 @@ int main()
     fps.text.setCharacterSize(30);
     fps.text.setFillColor(sf::Color::Green);
 
+    
     sf::Image background;
-    if (!background.loadFromFile("background.jpg"))
-    {
-        printf("Error, can't load Table.bmp\n");
-        
-        return 1;
-    }   
-    const unsigned char *background_pixels = background.getPixelsPtr();
+    const unsigned char *background_pixels = InitImage(&background, "background.jpg");
 
     sf::Image dude;
-    if (!dude.loadFromFile("dude.png"))
-    {
-        printf("Error, can't load dude.png\n");
+    const unsigned char *dude_pixels       = InitImage(&dude,       "dude.png");
 
-        return 1;
-    }
-    const unsigned char *dude_pixels = dude.getPixelsPtr();
+    sf::Image pattinson;
+    const unsigned char *pattinson_pixels  = InitImage(&pattinson,  "pattinson.png");
 
     picture result_picture;
     result_picture.texture.create(BACKGROUND_WIDTH, BACKGROUND_HEIGHT);
@@ -128,11 +136,18 @@ int main()
     unsigned *result_picture_pixels = (unsigned *) calloc(BACKGROUND_WIDTH * BACKGROUND_HEIGHT,  sizeof(unsigned));
     memcpy(result_picture_pixels, background_pixels,      BACKGROUND_WIDTH * BACKGROUND_HEIGHT * sizeof(unsigned));
 
-    /*for (int i = 0; i < 100000; ++i)
+    for (int i = 0; i < 100000; ++i)
     {
-        DoComposedPicture(background_pixels, dude_pixels, (unsigned char *) result_picture_pixels);
+        DoComposedPicture(dude_pixels,      (unsigned char *) result_picture_pixels,
+                          DUDE_WIDTH, DUDE_HEIGHT, DUDE_X_POSITION, DUDE_Y_POSITION);
+        DoComposedPicture(pattinson_pixels, (unsigned char *) result_picture_pixels,
+                          PATTINSON_WIDTH, PATTINSON_HEIGHT, PATTINSON_X_POSITION,
+                          PATTINSON_Y_POSITION);
         RenewFPS(&fps);
-    }*/
+    }
+
+    /*
+    sf::RenderWindow window(sf::VideoMode(BACKGROUND_WIDTH, BACKGROUND_HEIGHT), "Composing_pictures", sf::Style::Default);  
 
     while (window.isOpen())
     {
@@ -144,7 +159,12 @@ int main()
                 window.close();
         }
 
-        DoComposedPicture(background_pixels, dude_pixels, (unsigned char *) result_picture_pixels);
+        DoComposedPicture(dude_pixels,      (unsigned char *) result_picture_pixels,
+                          DUDE_WIDTH, DUDE_HEIGHT, DUDE_X_POSITION, DUDE_Y_POSITION);
+        DoComposedPicture(pattinson_pixels, (unsigned char *) result_picture_pixels,
+                          PATTINSON_WIDTH, PATTINSON_HEIGHT, PATTINSON_X_POSITION,
+                          PATTINSON_Y_POSITION);
+                          
         result_picture.texture.update((const uint8_t *) result_picture_pixels);
         
         RenewFPS(&fps);
@@ -155,7 +175,7 @@ int main()
         window.draw(fps.text);
 
         window.display();
-    }
+    }*/
 
     free(result_picture_pixels);
 

@@ -23,15 +23,17 @@ void RenewFPS(FPS *fps_struct)
     fps_struct->clock.restart(); 
 }
 
-int InitPictures(FPS *fps, sf::Image *background, sf::Image *dude,
+int InitPictures(FPS *fps, sf::Image *background, sf::Image *dude, sf::Image *pattinson,
                  picture *result_picture,
                  const unsigned char **background_pixels, 
                  const unsigned char **dude_pixels,
+                 const unsigned char **pattinson_pixels,
                  unsigned *result_picture_pixels)
 {
     assert(fps                   != nullptr);
     assert(background            != nullptr);
     assert(dude                  != nullptr);
+    assert(pattinson             != nullptr);
     assert(result_picture        != nullptr);
     assert(result_picture_pixels != nullptr);
 
@@ -45,21 +47,9 @@ int InitPictures(FPS *fps, sf::Image *background, sf::Image *dude,
     fps->text.setCharacterSize(30);
     fps->text.setFillColor(sf::Color::Green);
     
-    if (!background->loadFromFile("background.jpg"))
-    {
-        printf("Error, can't load background.jpg\n");
-        
-        return 1;
-    }   
-    *background_pixels = background->getPixelsPtr();
-    
-    if (!dude->loadFromFile("dude.png"))
-    {
-        printf("Error, can't load dude.png\n");
-
-        return 1;
-    }
-    *dude_pixels = dude->getPixelsPtr();
+    *background_pixels = InitImage(background, "background.jpg");
+    *dude_pixels       = InitImage(dude,       "dude.png");
+    *pattinson_pixels  = InitImage(pattinson,  "pattinson.png");
 
     result_picture->texture.create(BACKGROUND_WIDTH, BACKGROUND_HEIGHT);
     result_picture->sprite.setTexture(result_picture->texture);
@@ -70,21 +60,21 @@ int InitPictures(FPS *fps, sf::Image *background, sf::Image *dude,
     return 0;
 }
 
-void DoComposedPicture(const unsigned *background_pixels, const unsigned *dude_pixels, 
-                       unsigned *result_picture_pixels)
+void DoComposedPicture(const unsigned *add_pixels, unsigned *result_picture_pixels,
+                       const unsigned width, const unsigned height, const unsigned x_position,
+                       const unsigned y_position)
 {
-    assert(background_pixels     != nullptr);
-    assert(dude_pixels           != nullptr);
+    assert(add_pixels            != nullptr);
     assert(result_picture_pixels != nullptr);
 
-    for (int y_pos = 0; y_pos < DUDE_HEIGHT; ++y_pos)
+    for (int y_pos = 0; y_pos < height; ++y_pos)
     {
-        for (int x_pos = 0; x_pos < DUDE_WIDTH; x_pos += PIXELS_AT_ONCE)
+        for (int x_pos = 0; x_pos < width; x_pos += PIXELS_AT_ONCE)
         {
-            __m128i bg_lo = _mm_loadu_si128((__m128i *) &background_pixels[(y_pos + DUDE_Y_POSITION) * 
-                                                                            BACKGROUND_WIDTH +
-                                                                            x_pos + DUDE_X_POSITION]);
-            __m128i fg_lo = _mm_loadu_si128((__m128i *) &dude_pixels[     y_pos * DUDE_WIDTH + x_pos]);
+            __m128i bg_lo = _mm_loadu_si128((__m128i *) &result_picture_pixels[(y_pos + y_position) * 
+                                                                                BACKGROUND_WIDTH +
+                                                                                x_pos + x_position]);
+            __m128i fg_lo = _mm_loadu_si128((__m128i *) &add_pixels[            y_pos * width + x_pos]);
 
             __m128i bg_hi = (__m128i) _mm_movehl_ps((__m128) ZEROS, (__m128) bg_lo);
             __m128i fg_hi = (__m128i) _mm_movehl_ps((__m128) ZEROS, (__m128) fg_lo);
@@ -118,8 +108,23 @@ void DoComposedPicture(const unsigned *background_pixels, const unsigned *dude_p
 
             __m128i final_pixels = (__m128i) _mm_movelh_ps((__m128) sum_lo, (__m128) sum_hi);
 
-            _mm_storeu_si128((__m128i *) &result_picture_pixels[(y_pos + DUDE_Y_POSITION) * BACKGROUND_WIDTH + 
-                                                                 x_pos + DUDE_X_POSITION], final_pixels);
+            final_pixels = _mm_add_epi8(final_pixels, DIV_MISTAKE_FIX);
+
+            _mm_storeu_si128((__m128i *) &result_picture_pixels[(y_pos + y_position) * BACKGROUND_WIDTH + 
+                                                                 x_pos + x_position], final_pixels);
         }
     }
+}
+
+const unsigned char *InitImage(sf::Image *image, const char *file_name)
+{
+    assert(image     != nullptr);
+    assert(file_name != nullptr);
+
+    if (!image->loadFromFile(file_name))
+    {
+        printf("Error, can't load %s\n", file_name);
+    }
+
+    return image->getPixelsPtr(); 
 }
