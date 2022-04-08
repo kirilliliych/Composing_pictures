@@ -1,4 +1,4 @@
 all:
 	clear
-	g++ Composing_pictures.cpp main.cpp -msse4.2 -O2 -o blending -lsfml-graphics -lsfml-window -lsfml-audio -lsfml-system
+	g++ Composing_pictures.cpp main.cpp -msse4.2 -O3 -o blending -lsfml-graphics -lsfml-window -lsfml-audio -lsfml-system
 	./blending
