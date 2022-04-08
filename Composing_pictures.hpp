@@ -32,6 +32,9 @@ struct FPS
 
     float FPS_delay = 0.2f;
 
+    double FPS_sum    = 0;
+    int frames_saved  = 0;
+
     char fps_str[FPS_STR_MAX_SIZE] = "FPS: 0000.00\n";
 };
 
@@ -65,9 +68,10 @@ int InitPictures(FPS *fps, sf::Image *background, sf::Image *dude, sf::Image *pa
                  const unsigned char **pattinson_pixels,
                  unsigned *result_picture_pixels);
 
-void DoComposedPicture(const unsigned *add_pixels, unsigned *result_picture_pixels,
-                       const unsigned width, const unsigned heigiht,
-                       const unsigned x_position, const unsigned y_position);
+void DoComposedPicture(const unsigned *pixels_1, const unsigned *pixels_2, 
+                       unsigned *result_picture_pixels, const unsigned width, 
+                       const unsigned heigiht, const unsigned x_position, 
+                       const unsigned y_position, const unsigned pixels_1_width);
 
 const unsigned char *InitImage(sf::Image *image, const char *file_name);
 

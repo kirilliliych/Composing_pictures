@@ -1,26 +1,35 @@
 #include "Composing_pictures.hpp"
 
+//#define PICTURE_SHOWING
+#define FPS_CHECKING
+
 void RenewFPS(FPS *fps_struct)
 {
     assert(fps_struct != nullptr);
     
-    fps_struct->delay_time = fps_struct->delay_clock.getElapsedTime();
+    fps_struct->delay_time   = fps_struct->delay_clock.getElapsedTime();
+    fps_struct->cur_time     = fps_struct->clock.getElapsedTime();
+    fps_struct->FPS_sum     += 1 / fps_struct->cur_time.asSeconds();
+    ++fps_struct->frames_saved;
 
     if (fps_struct->delay_time.asSeconds() > fps_struct->FPS_delay)
     {
-        fps_struct->cur_time = fps_struct->clock.getElapsedTime();
-
         sprintf(fps_struct->fps_str + FPS_STR_FPS_VALUE_POS, "%.2lf\n", 
-                (1 / fps_struct->cur_time.asSeconds()));
+                fps_struct->FPS_sum / fps_struct->frames_saved);
         
         fps_struct->text.setString(fps_struct->fps_str);
         
         fps_struct->delay_clock.restart();
 
-        fprintf(stderr, fps_struct->fps_str);
+        fps_struct->FPS_sum = 0;
+        fps_struct->frames_saved = 0;
+
+#ifdef FPS_CHECKING
+        fprintf(stderr, "%s", fps_struct->fps_str); 
+#endif
     }
 
-    fps_struct->clock.restart(); 
+    fps_struct->clock.restart();
 }
 
 int InitPictures(FPS *fps, sf::Image *background, sf::Image *dude, sf::Image *pattinson,
@@ -46,6 +55,7 @@ int InitPictures(FPS *fps, sf::Image *background, sf::Image *dude, sf::Image *pa
     fps->text.setFont(fps->font);
     fps->text.setCharacterSize(30);
     fps->text.setFillColor(sf::Color::Green);
+    fps->text.setPosition(350.f, 0.f);
     
     *background_pixels = InitImage(background, "background.jpg");
     *dude_pixels       = InitImage(dude,       "dude.png");
@@ -60,21 +70,23 @@ int InitPictures(FPS *fps, sf::Image *background, sf::Image *dude, sf::Image *pa
     return 0;
 }
 
-void DoComposedPicture(const unsigned *add_pixels, unsigned *result_picture_pixels,
-                       const unsigned width, const unsigned height, const unsigned x_position,
-                       const unsigned y_position)
+void DoComposedPicture(const unsigned *pixels_1, const unsigned *pixels_2, 
+                       unsigned *result_picture_pixels, const unsigned width, 
+                       const unsigned height, const unsigned x_position,
+                       const unsigned y_position, const unsigned pixels_1_width)
 {
-    assert(add_pixels            != nullptr);
+    assert(pixels_1              != nullptr);
+    assert(pixels_2              != nullptr);
     assert(result_picture_pixels != nullptr);
 
     for (int y_pos = 0; y_pos < height; ++y_pos)
     {
         for (int x_pos = 0; x_pos < width; x_pos += PIXELS_AT_ONCE)
         {
-            __m128i bg_lo = _mm_loadu_si128((__m128i *) &result_picture_pixels[(y_pos + y_position) * 
-                                                                                BACKGROUND_WIDTH +
-                                                                                x_pos + x_position]);
-            __m128i fg_lo = _mm_loadu_si128((__m128i *) &add_pixels[            y_pos * width + x_pos]);
+            __m128i bg_lo = _mm_loadu_si128((__m128i *) &pixels_1[(y_pos + y_position) * 
+                                                                   pixels_1_width +
+                                                                   x_pos + x_position]);
+            __m128i fg_lo = _mm_loadu_si128((__m128i *) &pixels_2[ y_pos * width + x_pos]);
 
             __m128i bg_hi = (__m128i) _mm_movehl_ps((__m128) ZEROS, (__m128) bg_lo);
             __m128i fg_hi = (__m128i) _mm_movehl_ps((__m128) ZEROS, (__m128) fg_lo);
@@ -110,7 +122,7 @@ void DoComposedPicture(const unsigned *add_pixels, unsigned *result_picture_pixe
 
             final_pixels = _mm_add_epi8(final_pixels, DIV_MISTAKE_FIX);
 
-            _mm_storeu_si128((__m128i *) &result_picture_pixels[(y_pos + y_position) * BACKGROUND_WIDTH + 
+            _mm_storeu_si128((__m128i *) &result_picture_pixels[(y_pos + y_position) * pixels_1_width + 
                                                                  x_pos + x_position], final_pixels);
         }
     }

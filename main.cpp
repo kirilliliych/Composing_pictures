@@ -1,5 +1,8 @@
 #include "Composing_pictures.hpp"
 
+//#define PICTURE_SHOWING
+#define FPS_CHECKING
+
 int main()
 {
     FPS fps;
@@ -16,17 +19,21 @@ int main()
     InitPictures(&fps, &background, &dude, &pattinson, &result_picture, &background_pixels, 
                  &dude_pixels, &pattinson_pixels, result_picture_pixels);
 
+#ifdef FPS_CHECKING
     for (int iteration = 0; iteration < 1000000; ++iteration)
     {
-        DoComposedPicture((const unsigned *) dude_pixels, result_picture_pixels,
-                           DUDE_WIDTH, DUDE_HEIGHT, DUDE_X_POSITION, DUDE_Y_POSITION);
-        DoComposedPicture((const unsigned *) pattinson_pixels, result_picture_pixels,
-                           PATTINSON_WIDTH, PATTINSON_HEIGHT, PATTINSON_X_POSITION,
-                           PATTINSON_Y_POSITION);
+        DoComposedPicture(result_picture_pixels, (const unsigned *) dude_pixels,
+                          result_picture_pixels, DUDE_WIDTH, DUDE_HEIGHT, DUDE_X_POSITION, 
+                          DUDE_Y_POSITION, BACKGROUND_WIDTH);
+        DoComposedPicture(result_picture_pixels, (const unsigned *) pattinson_pixels,
+                          result_picture_pixels, PATTINSON_WIDTH, PATTINSON_HEIGHT, PATTINSON_X_POSITION,
+                          PATTINSON_Y_POSITION, BACKGROUND_WIDTH);
         RenewFPS(&fps);
     }
+#endif
 
-    /*sf::RenderWindow window(sf::VideoMode(BACKGROUND_WIDTH, BACKGROUND_HEIGHT), 
+#ifdef PICTURE_SHOWING
+    sf::RenderWindow window(sf::VideoMode(BACKGROUND_WIDTH, BACKGROUND_HEIGHT), 
                             "Composing_pictures", sf::Style::Default);
 
     while (window.isOpen())
@@ -39,11 +46,12 @@ int main()
                 window.close();
         }
 
-        DoComposedPicture((const unsigned *) dude_pixels, result_picture_pixels,
-                           DUDE_WIDTH, DUDE_HEIGHT, DUDE_X_POSITION, DUDE_Y_POSITION);
-        DoComposedPicture((const unsigned *) pattinson_pixels, result_picture_pixels,
-                           PATTINSON_WIDTH, PATTINSON_HEIGHT, PATTINSON_X_POSITION,
-                           PATTINSON_Y_POSITION);
+        DoComposedPicture(result_picture_pixels, (const unsigned *) dude_pixels, 
+                          result_picture_pixels, DUDE_WIDTH, DUDE_HEIGHT, DUDE_X_POSITION, 
+                          DUDE_Y_POSITION, BACKGROUND_WIDTH);
+        DoComposedPicture(result_picture_pixels, (const unsigned *) pattinson_pixels, 
+                          result_picture_pixels, PATTINSON_WIDTH, PATTINSON_HEIGHT, PATTINSON_X_POSITION, 
+                          PATTINSON_Y_POSITION, BACKGROUND_WIDTH);
         result_picture.texture.update((const unsigned char *) result_picture_pixels);
         
         RenewFPS(&fps);
@@ -54,7 +62,8 @@ int main()
         window.draw(fps.text);
 
         window.display();
-    }*/
+    }
+#endif
 
     free(result_picture_pixels);
 
