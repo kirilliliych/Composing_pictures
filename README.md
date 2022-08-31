@@ -18,7 +18,9 @@ using different approaches.
 ***
 Define directive at the beginning of main.cpp switches modes of the program:
     - showing picture which is a result of alpha compositing of pictures that were given via SFML library
+    
     - just doing calculations connected with alpha compositing, in this case FPS counter is being shown at the top left corner
+    
     - if both defines are defined, picture is being shown with the FPS counter.
  
 Showing the result in a window is implemented via [SFML library](https://www.sfml-dev.org/).
