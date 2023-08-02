@@ -4,7 +4,7 @@ The program is free-to-use for all kinds of developers.
 
 ***
 ## What does the project do
-The program does alpha compositing of two or more pictures.
+The program does [alpha compositing](https://en.wikipedia.org/wiki/Alpha_compositing) of two or more pictures.
 
 ***
 ## Why is the project useful
